@@ -16,35 +16,16 @@ void print_state(const RingBuffer<T, SIZE>& rb) {
 int main() {
     auto rb = RingBuffer<int, 5>{};
     print_state(rb);
-    rb.push(1);
-    print_state(rb);
-    rb.push(2);
-    print_state(rb);
-    rb.push(3);
-    print_state(rb); 
-    rb.push(4);
-    print_state(rb);
-    rb.push(4);
-    print_state(rb);
-    rb.push(4);
-    print_state(rb);
-    rb.push(4);
-    print_state(rb);
-    rb.pop();
-    print_state(rb);
-    rb.pop();
-    print_state(rb);
-    rb.pop();
-    print_state(rb);
-    rb.pop();
-    print_state(rb);
-    rb.pop();
-    print_state(rb);
-    rb.pop();
-    print_state(rb);
-    rb.pop();
-    print_state(rb);
-    rb.pop();
-    print_state(rb); 
+    for (int i = 0; i<10; i++) {
+        rb.push(i);
+        print_state(rb);
+    }
+
+    for (int i = 0; i<6; i++) {
+        if (const auto val = rb.pop()) {
+            std::cout << "val: " << *val << std::endl;
+        }
+    }
+    
     return 0;
 }

@@ -3,54 +3,65 @@
 #include <cstddef>
 #include <array>
 #include <optional>
+#include <utility>
 
 template <class T, size_t SIZE>
 class RingBuffer {
+    static_assert(SIZE != 0, "ring buffer size can't be 0");
 public:
-    RingBuffer() : m_buffer(std::array<T, SIZE>{}), m_head(0), m_tail(0) {
-        static_assert(SIZE != 0, "ring buffer size can't be 0");
-    }
-
-    void push(const T& data) {
-        push(std::move(data));
+    RingBuffer() : m_head(0), m_tail(0), m_size(0) {
     }
 
     void push(T&& data) {
-        if (m_tail == (m_buffer.size() - 1)) {
-            m_buffer[m_tail] = data;
-            m_tail = 0;
-        } else {
-            m_buffer[m_tail++] = data;
-        }
-        
-
-        if (m_tail == m_head) {
-            m_head++;
-        }
+        push_impl(std::move(data));
+    }
+  
+    void push(const T& data) {
+        push_impl(data);
     }
 
     std::optional<T> pop() {
         if (empty()) {
             return std::nullopt;
         }
-        return m_buffer[m_head++];
+
+        auto val = std::move(m_buffer[m_head]);
+        m_head = (m_head + 1) % SIZE;
+        
+        m_size--;
+
+        return val;
     }
 
     [[nodiscard]] bool empty() const {
-        return size() == 0;
+        return m_size == 0;
     }
 
     [[nodiscard]] bool full() const {
-        return size() == m_buffer.size();
+        return m_size == SIZE;
     }
 
     [[nodiscard]] size_t size() const {
-        if (m_tail > m_head) return (m_tail - m_head);
-        else if (m_tail < m_head) return m_buffer.size() - (m_head - m_tail) + 1 ;
-        else return 0;
+        return m_size;
     }
 private:
-    std::array<T, SIZE> m_buffer;
+    template<typename U>
+    void push_impl(U&& data) {
+        const bool was_full = full();
+
+        m_buffer[m_tail] = std::forward<U>(data);
+
+        m_tail = (m_tail + 1) % SIZE;
+
+        if (was_full) {
+            m_head = (m_head + 1) % SIZE;
+        } else {
+            m_size++;
+        }
+    }
+
+    std::array<T, SIZE> m_buffer{};
     size_t m_head;
     size_t m_tail;
+    size_t m_size;
 };
