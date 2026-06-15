@@ -4,20 +4,25 @@
 #include <array>
 #include <optional>
 #include <utility>
+#include <mutex>
 
 template <class T, size_t SIZE>
 class RingBuffer {
     static_assert(SIZE != 0, "ring buffer size can't be 0");
+
 public:
-    RingBuffer() : m_head(0), m_tail(0), m_size(0) {
-    }
+    RingBuffer() 
+        : m_head(0)
+        , m_tail(0)
+        , m_size(0) 
+    {}
 
     void push(T&& data) {
-        push_impl(std::move(data));
+        m_push_impl(std::move(data));
     }
   
     void push(const T& data) {
-        push_impl(data);
+        m_push_impl(data);
     }
 
     std::optional<T> pop() {
@@ -46,7 +51,7 @@ public:
     }
 private:
     template<typename U>
-    void push_impl(U&& data) {
+    void m_push_impl(U&& data) {
         const bool was_full = full();
 
         m_buffer[m_tail] = std::forward<U>(data);
@@ -64,4 +69,42 @@ private:
     size_t m_head;
     size_t m_tail;
     size_t m_size;
+};
+
+template<class T, size_t SIZE>
+class AtomicRingBuffer {
+public:
+    AtomicRingBuffer() = default;
+    void push(T&& data) {
+        std::lock_guard lock(m_mtx);
+        m_rb.push(data);
+    }
+  
+    void push(const T& data) {
+        std::lock_guard lock(m_mtx);
+        m_rb.push(data);
+    }
+
+    std::optional<T> pop() {
+        std::lock_guard lock(m_mtx);
+        return m_rb.pop();
+    }
+
+    [[nodiscard]] bool empty() const {
+        std::lock_guard lock(m_mtx);
+        return m_rb.empty();
+    }
+
+    [[nodiscard]] bool full() const {
+        std::lock_guard lock(m_mtx);
+        return m_rb.full();
+    }
+
+    [[nodiscard]] size_t size() const {
+        std::lock_guard lock(m_mtx);
+        return m_rb.size();
+    }
+private:
+    RingBuffer<T, SIZE> m_rb{};
+    mutable std::mutex m_mtx;
 };
