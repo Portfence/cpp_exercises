@@ -1,10 +1,11 @@
 #include "lru_cache.hpp"
 #include "ring_buffer.hpp"
+#include "smart_ptr.hpp"
 
 #include <iostream>
 #include <string>
 
-template <class T, size_t SIZE> void print_state(const AtomicRingBuffer<T, SIZE> &rb) {
+template <class T, size_t SIZE> void print_state(const AtomicRingBuffer<T, SIZE>& rb) {
     using std::cout;
     using std::endl;
 
@@ -43,8 +44,26 @@ void test_lru_cache() {
     }
 }
 
+void test_shared_ptr() {
+    struct A {
+        int i = 0;
+    };
+
+    auto a = SharedPtr(new int(1));
+    auto b = SharedPtr(new int(2));
+    auto c = a;
+    c = b;
+    c = c;
+    auto d = SharedPtr(new A{.i = 1});
+
+    std::cout << "val: " << *a << std::endl;
+    std::cout << "val: " << *b << std::endl;
+    std::cout << "val: " << d->i << std::endl;
+}
+
 int main() {
     // test_ring_buffer();
-    test_lru_cache();
+    // test_lru_cache();
+    test_shared_ptr();
     return 0;
 }
