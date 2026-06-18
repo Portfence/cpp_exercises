@@ -13,11 +13,11 @@ template <class T, size_t SIZE> class RingBuffer {
     RingBuffer() : m_head(0), m_tail(0), m_size(0) {
     }
 
-    void push(T &&data) {
+    void push(T&& data) {
         m_push_impl(std::move(data));
     }
 
-    void push(const T &data) {
+    void push(const T& data) {
         m_push_impl(data);
     }
 
@@ -47,7 +47,7 @@ template <class T, size_t SIZE> class RingBuffer {
     }
 
   private:
-    template <typename U> void m_push_impl(U &&data) {
+    template <typename U> void m_push_impl(U&& data) {
         const bool was_full = full();
 
         m_buffer[m_tail] = std::forward<U>(data);
@@ -70,12 +70,12 @@ template <class T, size_t SIZE> class RingBuffer {
 template <class T, size_t SIZE> class AtomicRingBuffer {
   public:
     AtomicRingBuffer() = default;
-    void push(T &&data) {
+    void push(T&& data) {
         std::lock_guard lock(m_mtx);
         m_rb.push(data);
     }
 
-    void push(const T &data) {
+    void push(const T& data) {
         std::lock_guard lock(m_mtx);
         m_rb.push(data);
     }

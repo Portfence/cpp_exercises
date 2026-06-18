@@ -1,15 +1,14 @@
 #pragma once
 
-#include <unordered_map>
+#include <cassert>
+#include <cstddef>
 #include <list>
 #include <optional>
-#include <cstddef>
-#include <cassert>
+#include <unordered_map>
 
-template<typename Key, typename Value>
-class LRUCache{
-public:
-    LRUCache(size_t capacity): m_capacity(capacity) {
+template <typename Key, typename Value> class LRUCache {
+  public:
+    LRUCache(size_t capacity) : m_capacity(capacity) {
         assert(capacity > 0);
     }
 
@@ -40,7 +39,8 @@ public:
         }
         return nullptr;
     }
-private:
+
+  private:
     std::list<std::pair<Key, Value>> m_list{};
     std::unordered_map<Key, typename std::list<std::pair<Key, Value>>::iterator> m_map{};
     const size_t m_capacity;
