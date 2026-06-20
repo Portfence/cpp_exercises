@@ -49,12 +49,20 @@ void test_shared_ptr() {
         int i = 0;
     };
 
+    // Move constructor
     auto a = SharedPtr(new int(1));
+    // Move constructor
     auto b = SharedPtr(new int(2));
+    // copy constructor
     auto c = a;
+    // copy assignment
     c = b;
+    // self copy (guarded)
     c = c;
     auto d = SharedPtr(new A{.i = 1});
+    auto e = SharedPtr(new A{.i = 2});
+
+    d = std::move(e);
 
     std::cout << "val: " << *a << std::endl;
     std::cout << "val: " << *b << std::endl;
