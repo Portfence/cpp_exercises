@@ -1,8 +1,10 @@
 #include "lru_cache.hpp"
 #include "ring_buffer.hpp"
 #include "smart_ptr.hpp"
+#include "thread_pool.hpp"
 
 #include <iostream>
+#include <print>
 #include <string>
 
 template <class T, size_t SIZE> void print_state(const AtomicRingBuffer<T, SIZE>& rb) {
@@ -69,9 +71,27 @@ void test_shared_ptr() {
     std::cout << "val: " << d->i << std::endl;
 }
 
+void test_thread_pool() {
+    auto thread_pool = ThreadPool(9);
+
+    for (int i = 0; i < 10; i++) {
+        thread_pool.enqueue([i] {
+            using namespace std::chrono_literals;
+            int j = 0;
+            while (j < 5) {
+                std::println("task {} working on step {}..", i, j);
+                j++;
+                std::this_thread::sleep_for(1s);
+            }
+        });
+    }
+    std::println("enqueued 10 tasks");
+}
+
 int main() {
     // test_ring_buffer();
     // test_lru_cache();
-    test_shared_ptr();
+    // test_shared_ptr();
+    test_thread_pool();
     return 0;
 }
