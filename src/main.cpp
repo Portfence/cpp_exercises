@@ -1,3 +1,4 @@
+#include "echo.hpp"
 #include "lru_cache.hpp"
 #include "ring_buffer.hpp"
 #include "smart_ptr.hpp"
@@ -92,6 +93,8 @@ int main() {
     // test_ring_buffer();
     // test_lru_cache();
     // test_shared_ptr();
-    test_thread_pool();
+    // test_thread_pool();
+    // coroutines::run_exercise();
+    echo::run_exercise();
     return 0;
 }
