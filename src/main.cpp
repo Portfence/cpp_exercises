@@ -89,12 +89,18 @@ void test_thread_pool() {
     std::println("enqueued 10 tasks");
 }
 
+using std::println;
+
 int main() {
+    println("running Exercices bin");
     // test_ring_buffer();
     // test_lru_cache();
     // test_shared_ptr();
     // test_thread_pool();
     // coroutines::run_exercise();
-    echo::run_exercise();
+    if (auto result = echo::run_exercise(); !result.has_value()) {
+        println("error: {}", result.error());
+    }
+
     return 0;
 }
