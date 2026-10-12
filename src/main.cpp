@@ -3,7 +3,7 @@
 #include "ring_buffer.hpp"
 #include "smart_ptr.hpp"
 #include "thread_pool.hpp"
-
+#include "tracker/tracker.hpp"
 #include <iostream>
 #include <print>
 #include <string>
@@ -98,9 +98,12 @@ int main() {
     // test_shared_ptr();
     // test_thread_pool();
     // coroutines::run_exercise();
-    if (auto result = echo::run_exercise(); !result.has_value()) {
-        println("error: {}", result.error());
-    }
+    // if (auto result = echo::run_exercise(); !result.has_value()) {
+    //     println("error: {}", result.error());
+    // }
 
-    return 0;
+    auto tracker = tracker::Tracker();
+    return tracker.run();
+
+
 }

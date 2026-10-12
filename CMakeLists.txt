@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.28.3)
 set(CMAKE_CXX_COMPILER clang++-19)
 set(CMAKE_C_COMPILER clang-19)
 
-project(Exercises LANGUAGES CXX)
+project(Exercises LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -20,6 +20,7 @@ endif()
 add_executable(${PROJECT_NAME}
     src/main.cpp
     src/echo.cpp
+    src/tracker/tracker.cpp
 )
 
 # target_include_directories(${PROJECT_NAME} PRIVATE src/include)
@@ -37,7 +38,13 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
     GIT_TAG asio-1-30-2
 )
-FetchContent_MakeAvailable(asio) 
+FetchContent_MakeAvailable(asio)
+include(cmake/FFmpeg.cmake)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    FFmpeg::avformat
+    FFmpeg::avcodec
+    FFmpeg::avutil
+)
 target_include_directories(${PROJECT_NAME} PRIVATE ${asio_SOURCE_DIR}/asio/include)
 target_compile_definitions(${PROJECT_NAME} PRIVATE ASIO_STANDALONE ASIO_NO_DEPRECATED)
 
