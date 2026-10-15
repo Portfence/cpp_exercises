@@ -20,8 +20,8 @@ endif()
 add_executable(${PROJECT_NAME}
     src/main.cpp
     src/echo.cpp
-    src/tracker/tracker.cpp
-    src/tracker/decoder.cpp
+    src/video_tracker/app.cpp
+    src/video_tracker/decoder.cpp
 )
 
 # target_include_directories(${PROJECT_NAME} PRIVATE src/include)

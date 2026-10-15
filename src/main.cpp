@@ -3,7 +3,7 @@
 #include "ring_buffer.hpp"
 #include "smart_ptr.hpp"
 #include "thread_pool.hpp"
-#include "tracker/tracker.hpp"
+#include "video_tracker/app.hpp"
 #include <iostream>
 #include <print>
 #include <string>
@@ -61,7 +61,7 @@ void test_shared_ptr() {
     // copy assignment
     c = b;
     // self copy (guarded)
-    c = c;
+    // c = c;
     auto d = SharedPtr(new A{.i = 1});
     auto e = SharedPtr(new A{.i = 2});
 
@@ -102,8 +102,8 @@ int main() {
     //     println("error: {}", result.error());
     // }
 
-    auto tracker = tracker::Tracker();
-    return tracker.run();
+    auto app = video_tracker::App();
+    return app.run();
 
 
 }

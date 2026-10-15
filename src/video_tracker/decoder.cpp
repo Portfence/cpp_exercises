@@ -1,25 +1,27 @@
 
 #include "decoder.hpp"
+#include "common.hpp"
+
+#include <cerrno>
 #include <format>
 #include <print>
 #include <stdexcept>
 #include <utility>
 extern "C" {
+#include <libavutil/pixfmt.h>
 #include <libavcodec/packet.h>
 #include <libavutil/error.h>
 #include <libavutil/frame.h>
-#include <libavcodec/codec.h>
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/avutil.h>
-#include <libavutil/imgutils.h>
 #include <libavutil/hwcontext.h>
 }
 
 using std::println;
 
 namespace {
-    static AVPixelFormat choose_cuda(
+    AVPixelFormat choose_cuda(
         AVCodecContext*,
         const AVPixelFormat* formats)
         {
@@ -32,9 +34,9 @@ namespace {
 }
 
 // https://ffmpeg.org/doxygen/trunk/hw_decode_8c-example.html
-tracker::VideoDecoder::VideoDecoder(std::string_view filepath) : m_packet(av_packet_alloc()){
+video_tracker::VideoDecoder::VideoDecoder(const std::string& filepath) : m_packet(av_packet_alloc()){
     // allocate format context and open file
-    if (avformat_open_input(&m_format_context, filepath.cbegin(), nullptr, nullptr) < 0) {
+    if (avformat_open_input(&m_format_context, filepath.c_str(), nullptr, nullptr) < 0) {
         throw std::runtime_error(std::format("error: could not open source file {}", filepath));
     }
 
@@ -52,7 +54,7 @@ tracker::VideoDecoder::VideoDecoder(std::string_view filepath) : m_packet(av_pac
     }
 
     m_video_stream = m_format_context->streams[m_video_stream_index];
-    // TODO: consider if this decoder should print this (maybe log instead)
+    // TODO: consider if this decoder should print this (maybe log/provide info-getter instead)
     println("Successfully opened {}", filepath);
     println("Codec name {}", m_decoder->long_name);
     println("Resolution {}x{}", m_video_stream->codecpar->width, m_video_stream->codecpar->height);
@@ -87,35 +89,25 @@ tracker::VideoDecoder::VideoDecoder(std::string_view filepath) : m_packet(av_pac
     }
 }
 
-tracker::VideoDecoder::~VideoDecoder() {
+video_tracker::VideoDecoder::~VideoDecoder() {
     avcodec_free_context(&m_codec_context);
     avformat_free_context(m_format_context);
 }
 
-AVFrame* tracker::VideoDecoder::next_frame() {
-    AVFrame* frame = av_frame_alloc();
+video_tracker::FramePtr video_tracker::VideoDecoder::next_frame() {
+    auto frame = FramePtr(av_frame_alloc());
 
     while(1) {
-        int response = avcodec_receive_frame(m_codec_context, frame);
-        if (response >= 0) {
-            return frame;
-        }
-        else if (response == AVERROR_EOF) {
-            return nullptr;
-        }
-        else if (response == AVERROR(EAGAIN)) {
-                // decoder needs input - fall through
-        } else {
-            throw std::runtime_error(std::format("failed to receive frame from decoder"));
-        }
+        if (const int response = avcodec_receive_frame(m_codec_context, frame.get()); response >= 0) return frame;
+        else if (response == AVERROR_EOF) return nullptr;
+        else if (response == AVERROR(EAGAIN)) {} // decoder needs input - fall through
+        else throw std::runtime_error(std::format("failed to receive frame from decoder"));
 
-        response = av_read_frame(m_format_context, m_packet);
-        if (response >= 0 && m_packet->stream_index == m_video_stream_index) {
-            response = avcodec_send_packet(m_codec_context, m_packet);
-            if (response < 0) {
+        if (const int response = av_read_frame(m_format_context, m_packet); response >= 0 && m_packet->stream_index == m_video_stream_index) {
+            if (avcodec_send_packet(m_codec_context, m_packet) < 0) {
                 throw std::runtime_error(std::format("failed to sent packet to decoder"));
             }
-            // fall through and return a frame
+            // fall through and try to return a frame on next iteration
         }
         else if (response == AVERROR_EOF) {
             // stream finished - tell decoder
