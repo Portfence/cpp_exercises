@@ -2,35 +2,50 @@
 
 #include "common.hpp"
 #include "decoder.hpp"
+#include "playback.hpp"
+#include "viewer.hpp"
 
 #include <exception>
 #include <format>
+#include <memory>
 #include <print>
+#include <utility>
 
 extern "C" {
 #include <libavutil/avutil.h>
 }
 
 using std::println;
-using video_tracker::VideoDecoder;
 using video_tracker::FramePtr;
 
 video_tracker::App::App() {}
 
-int video_tracker::App::run() {
+int video_tracker::App::run_viewer() {
+
     println("FFmpeg {}", av_version_info());
 
     try {
-        auto video_decoder = VideoDecoder("resources/people_uhd60fps.mp4");
-        int i = 0;
-        while (FramePtr frame = video_decoder.next_frame()) {
-            if (frame) {
-                i++;
+        auto viewer = Viewer(1920, 1080);
+        auto playback = Playback("resources/people_uhd60fps.mp4");
+        FramePtr current_frame;
+        println("Space: play/pause");
+        while (1) {
+            const auto events = viewer.poll_events();
+            if (viewer.should_close()) {
+                break;
             }
+
+            if (events.toggle_playback) {
+                playback.toggle_pause();
+            }
+
+            playback.update();
+
+            viewer.draw();
         }
-        println("received {} frames", i);
-    } catch (std::exception& e) {
-        println("decoder error: {}", e.what());
+    } catch (const std::exception& e) {
+        println("video player error: {}", e.what());
+        return 1;
     }
 
     return 0;

@@ -22,6 +22,8 @@ add_executable(${PROJECT_NAME}
     src/echo.cpp
     src/video_tracker/app.cpp
     src/video_tracker/decoder.cpp
+    src/video_tracker/viewer.cpp
+    src/video_tracker/playback.cpp
 )
 
 # target_include_directories(${PROJECT_NAME} PRIVATE src/include)
@@ -41,11 +43,26 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(asio)
 include(cmake/FFmpeg.cmake)
+find_package(OpenGL REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE
     FFmpeg::avformat
     FFmpeg::avcodec
     FFmpeg::avutil
+    glfw
+    OpenGL::GL
 )
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(
+    glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.4
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(glfw)
+
 target_include_directories(${PROJECT_NAME} PRIVATE ${asio_SOURCE_DIR}/asio/include)
 target_compile_definitions(${PROJECT_NAME} PRIVATE ASIO_STANDALONE ASIO_NO_DEPRECATED)
 

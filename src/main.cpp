@@ -103,7 +103,7 @@ int main() {
     // }
 
     auto app = video_tracker::App();
-    return app.run();
+    return app.run_viewer();
 
 
 }
