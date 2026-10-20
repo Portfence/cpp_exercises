@@ -1,22 +1,17 @@
 #include "app.hpp"
 
-#include "common.hpp"
-#include "decoder.hpp"
 #include "playback.hpp"
 #include "viewer.hpp"
 
 #include <exception>
 #include <format>
-#include <memory>
 #include <print>
-#include <utility>
 
 extern "C" {
 #include <libavutil/avutil.h>
 }
 
 using std::println;
-using video_tracker::FramePtr;
 
 video_tracker::App::App() {}
 
@@ -27,16 +22,22 @@ int video_tracker::App::run_viewer() {
     try {
         auto viewer = Viewer(1920, 1080);
         auto playback = Playback("resources/people_uhd60fps.mp4");
-        FramePtr current_frame;
-        println("Space: play/pause");
-        while (1) {
-            const auto events = viewer.poll_events();
+        println("  <SPACE>      : play/pause");
+        println("  <RIGHT_ARROW>: step frames (only when paused)");
+
+        while (true) {
+            const auto viewer_events = viewer.poll_events();
             if (viewer.should_close()) {
                 break;
             }
 
-            if (events.toggle_playback) {
+            if (viewer_events.toggle_playback) {
                 playback.toggle_pause();
+            }
+
+            // need to pause stream to step framess
+            if (viewer_events.step_requested && playback.paused()) {
+                playback.step_forward();
             }
 
             playback.update();

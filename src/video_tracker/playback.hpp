@@ -26,6 +26,6 @@ class Playback{
 
         bool m_paused = false;
         bool m_finished = false;
-        // bool m_step_requested = false;
+        bool m_step_requested = false;
 };
 }

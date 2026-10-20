@@ -22,11 +22,8 @@ video_tracker::Viewer::Viewer(int width, int height) {
 
     glfwSetWindowUserPointer(m_window, this);
     glfwSetKeyCallback(m_window, [](GLFWwindow* window, int key, int, int action, int) {
-        if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
-            auto* viewer = static_cast<Viewer*>(glfwGetWindowUserPointer(window));
-            viewer->m_pending_events.toggle_playback =
-                !viewer->m_pending_events.toggle_playback;
-        }
+        auto* viewer = static_cast<Viewer*>(glfwGetWindowUserPointer(window));
+        viewer->m_on_key(key, action);
     });
 }
 
@@ -44,7 +41,22 @@ video_tracker::Viewer::Events video_tracker::Viewer::poll_events() {
     return std::exchange(m_pending_events, Events{});
 }
 
+void video_tracker::Viewer::set_frame(const AVFrame* frame) {
+    if (frame) return;
+}
+
 void video_tracker::Viewer::draw() {
     glClear(GL_COLOR_BUFFER_BIT);
     glfwSwapBuffers(m_window);
+}
+
+void video_tracker::Viewer::m_on_key(int key, int action) {
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
+        m_pending_events.toggle_playback =
+            !m_pending_events.toggle_playback;
+    }
+
+    if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS) {
+        m_pending_events.step_requested = true;
+    }
 }
