@@ -43,14 +43,19 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(asio)
 include(cmake/FFmpeg.cmake)
+
 find_package(OpenGL REQUIRED)
+find_package(CUDAToolkit REQUIRED)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
     FFmpeg::avformat
     FFmpeg::avcodec
     FFmpeg::avutil
     glfw
     OpenGL::GL
+    CUDA::cuda_driver
 )
+
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)

@@ -3,6 +3,7 @@
 #include "playback.hpp"
 #include "viewer.hpp"
 
+#include <cstdlib>
 #include <exception>
 #include <format>
 #include <print>
@@ -20,8 +21,8 @@ int video_tracker::App::run_viewer() {
     println("FFmpeg {}", av_version_info());
 
     try {
-        auto viewer = Viewer(1920, 1080);
         auto playback = Playback("resources/people_uhd60fps.mp4");
+        auto viewer = Viewer(1920, 1080);
         println("  <SPACE>      : play/pause");
         println("  <RIGHT_ARROW>: step frames (only when paused)");
 
@@ -31,6 +32,8 @@ int video_tracker::App::run_viewer() {
                 break;
             }
 
+            playback.update();
+
             if (viewer_events.toggle_playback) {
                 playback.toggle_pause();
             }
@@ -38,16 +41,16 @@ int video_tracker::App::run_viewer() {
             // need to pause stream to step framess
             if (viewer_events.step_requested && playback.paused()) {
                 playback.step_forward();
+                viewer.set_frame(playback.current_frame());
             }
 
-            playback.update();
 
             viewer.draw();
         }
     } catch (const std::exception& e) {
-        println("video player error: {}", e.what());
-        return 1;
+        println("app error: {}", e.what());
+        return EXIT_FAILURE;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }

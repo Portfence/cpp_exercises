@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cuda.h>
+#include <cudaGL.h>
+#include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <libavutil/frame.h>
 
@@ -25,6 +28,8 @@ public:
 private:
     GLFWwindow* m_window = nullptr;
     Events m_pending_events;
+    GLuint m_texture = 0;
+    CUgraphicsResource m_resource = nullptr;
 
     void m_on_key(int key, int action);
 };
