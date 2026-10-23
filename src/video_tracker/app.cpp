@@ -32,18 +32,23 @@ int video_tracker::App::run_viewer() {
                 break;
             }
 
-            playback.update();
-
             if (viewer_events.toggle_playback) {
                 playback.toggle_pause();
+                if (playback.paused()) {
+                     println("paused at frame {}", playback.frame_counter());
+                } else {
+                    println("resuming");
+                }
             }
 
             // need to pause stream to step framess
             if (viewer_events.step_requested && playback.paused()) {
                 playback.step_forward();
-                viewer.set_frame(playback.current_frame());
             }
 
+            if (playback.update()) {
+                viewer.set_frame(playback.current_frame());
+            }
 
             viewer.draw();
         }

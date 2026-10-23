@@ -47,15 +47,6 @@ include(cmake/FFmpeg.cmake)
 find_package(OpenGL REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    FFmpeg::avformat
-    FFmpeg::avcodec
-    FFmpeg::avutil
-    glfw
-    OpenGL::GL
-    CUDA::cuda_driver
-)
-
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -68,7 +59,31 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glfw)
 
+FetchContent_Declare(
+    glad
+    GIT_REPOSITORY https://github.com/Dav1dde/glad.git
+    GIT_TAG v2.0.8
+    GIT_SHALLOW TRUE
+    SOURCE_SUBDIR cmake
+)
+FetchContent_MakeAvailable(glad)
+
+glad_add_library(glad_gl STATIC
+    REPRODUCIBLE
+    API gl:core=3.3
+    EXTENSIONS NONE
+)
+
+
 target_include_directories(${PROJECT_NAME} PRIVATE ${asio_SOURCE_DIR}/asio/include)
 target_compile_definitions(${PROJECT_NAME} PRIVATE ASIO_STANDALONE ASIO_NO_DEPRECATED)
-
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    FFmpeg::avformat
+    FFmpeg::avcodec
+    FFmpeg::avutil
+    glfw
+    OpenGL::GL
+    CUDA::cuda_driver
+    glad_gl
+)
 

@@ -1,8 +1,8 @@
 #pragma once
 
+#include <glad/gl.h>
 #include <cuda.h>
 #include <cudaGL.h>
-#include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <libavutil/frame.h>
 
@@ -30,6 +30,9 @@ private:
     Events m_pending_events;
     GLuint m_texture = 0;
     CUgraphicsResource m_resource = nullptr;
+    GLuint m_program = 0;
+    GLuint m_vao = 0;
+    bool m_has_frame = false;
 
     void m_on_key(int key, int action);
 };
