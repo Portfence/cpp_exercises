@@ -30,6 +30,8 @@ private:
     Events m_pending_events;
     GLuint m_texture = 0;
     CUgraphicsResource m_resource = nullptr;
+    GLuint m_uv_texture = 0;
+    CUgraphicsResource m_uv_resource = nullptr;
     GLuint m_program = 0;
     GLuint m_vao = 0;
     bool m_has_frame = false;

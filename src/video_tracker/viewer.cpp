@@ -3,10 +3,13 @@
 #include <format>
 #include <fstream>
 #include <iterator>
+#include <print>
 extern "C" {
     #include <libavutil/hwcontext.h>
     #include <libavutil/hwcontext_cuda.h>
+    #include <libavutil/pixdesc.h>
 }
+
 #include <stdexcept>
 #include <utility>
 
@@ -42,7 +45,7 @@ video_tracker::Viewer::Viewer(int width, int height) {
     if (gladLoadGL(glfwGetProcAddress) == 0) {
         throw std::runtime_error("Failed to load OpenGL functions");
     }
-    glfwSwapInterval(1);
+    // glfwSwapInterval(1);
 
     glfwSetWindowUserPointer(m_window, this);
     glfwSetKeyCallback(m_window, [](GLFWwindow* window, int key, int, int action, int) {
@@ -52,7 +55,11 @@ video_tracker::Viewer::Viewer(int width, int height) {
 
     glGenTextures(1, &m_texture);
     glBindTexture(GL_TEXTURE_2D, m_texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+    glGenTextures(1, &m_uv_texture);
+    glBindTexture(GL_TEXTURE_2D, m_uv_texture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -98,8 +105,12 @@ video_tracker::Viewer::Viewer(int width, int height) {
 
     glUseProgram(m_program);
     glUniform1i(
-        glGetUniformLocation(m_program, "frame_texture"),
+        glGetUniformLocation(m_program, "y_texture"),
         0
+    );
+    glUniform1i(
+        glGetUniformLocation(m_program, "uv_texture"),
+        1
     );
 
     glDeleteShader(vertex_shader);
@@ -109,6 +120,7 @@ video_tracker::Viewer::Viewer(int width, int height) {
 video_tracker::Viewer::~Viewer() {
     cuGraphicsUnregisterResource(m_resource);
     glDeleteTextures(1, &m_texture);
+    glDeleteTextures(1, &m_uv_texture);
     glDeleteProgram(m_program);
     glDeleteVertexArrays(1, &m_vao);
     glfwDestroyWindow(m_window);
@@ -126,6 +138,7 @@ video_tracker::Viewer::Events video_tracker::Viewer::poll_events() {
 
 void video_tracker::Viewer::set_frame(const AVFrame* frame) {
     const auto hw_frames_ctx = reinterpret_cast<const AVHWFramesContext*>(frame->hw_frames_ctx->data);
+
     auto* device_ctx = hw_frames_ctx->device_ctx;
 
     if (!device_ctx || device_ctx->type != AV_HWDEVICE_TYPE_CUDA) {
@@ -137,20 +150,32 @@ void video_tracker::Viewer::set_frame(const AVFrame* frame) {
     const auto res = cuCtxPushCurrent(context); // TODO: check if scu
     if (res != CUDA_SUCCESS) {
         const char* name = nullptr;
-            cuGetErrorName(res, &name);
+        cuGetErrorName(res, &name);
 
-            throw std::runtime_error(std::format(
-                "CUDA push current context failed: {} ({})",
-                name ? name : "unknown",
-                static_cast<int>(res)));
+        throw std::runtime_error(std::format(
+            "CUDA push current context failed: {} ({})",
+            name ? name : "unknown",
+            static_cast<int>(res)));
     }
 
     // resource is allocated after this
     if (!m_resource) { // consider moving this into constructor
+        std::println("Frame data:");
+        std::println("Pixel format: {}", av_get_pix_fmt_name(hw_frames_ctx->sw_format));
+        std::println("Color space: {}", av_color_space_name(frame->colorspace));
+        std::println("Color range: {}", av_color_range_name(frame->color_range));
+
+        glBindTexture(GL_TEXTURE_2D, m_texture);
         glTexImage2D(
         GL_TEXTURE_2D, 0, GL_R8,
         frame->width, frame->height, 0,
         GL_RED, GL_UNSIGNED_BYTE, nullptr);
+
+        glBindTexture(GL_TEXTURE_2D, m_uv_texture);
+        glTexImage2D(
+        GL_TEXTURE_2D, 0, GL_RG8,
+        frame->width / 2, frame->height / 2, 0,
+        GL_RG, GL_UNSIGNED_BYTE, nullptr);
 
         CUresult res = cuGraphicsGLRegisterImage(
             &m_resource,
@@ -158,23 +183,40 @@ void video_tracker::Viewer::set_frame(const AVFrame* frame) {
             GL_TEXTURE_2D,
             CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD
         );
+         if (res != CUDA_SUCCESS) {
+            const char* name = nullptr;
+            cuGetErrorName(res, &name);
 
+            throw std::runtime_error(std::format(
+                "CUDA y texture registration failed: {} ({})",
+                name ? name : "unknown",
+                static_cast<int>(res)));
+        }
+
+        res = cuGraphicsGLRegisterImage(
+            &m_uv_resource,
+            m_uv_texture,
+            GL_TEXTURE_2D,
+            CU_GRAPHICS_REGISTER_FLAGS_WRITE_DISCARD
+        );
 
         if (res != CUDA_SUCCESS) {
             const char* name = nullptr;
             cuGetErrorName(res, &name);
 
             throw std::runtime_error(std::format(
-                "CUDA image registration failed: {} ({})",
+                "CUDA uv texture registration failed: {} ({})",
                 name ? name : "unknown",
                 static_cast<int>(res)));
         }
     }
 
     auto stream = cuda->stream;
-    cuGraphicsMapResources(1, &m_resource, stream);
+    CUgraphicsResource resources[] = {m_resource, m_uv_resource};
+    cuGraphicsMapResources(2, resources, stream);
 
     CUarray destination = nullptr;
+
     cuGraphicsSubResourceGetMappedArray(&destination, m_resource, 0, 0);
 
     // copy or convert pixels
@@ -191,7 +233,23 @@ void video_tracker::Viewer::set_frame(const AVFrame* frame) {
         throw std::runtime_error("failed to cuMemcpy");
     }
 
-    cuGraphicsUnmapResources(1, &m_resource, stream);
+    CUarray uv_dst = nullptr;
+    cuGraphicsSubResourceGetMappedArray(&uv_dst, m_uv_resource, 0, 0);
+
+    CUDA_MEMCPY2D_st uv_copy{};
+    uv_copy.srcMemoryType = CU_MEMORYTYPE_DEVICE;
+    uv_copy.srcDevice = reinterpret_cast<CUdeviceptr>(frame->data[1]);
+    uv_copy.srcPitch = frame->linesize[1];
+    uv_copy.dstMemoryType = CU_MEMORYTYPE_ARRAY;
+    uv_copy.dstArray = uv_dst;
+    uv_copy.WidthInBytes = frame->width;
+    uv_copy.Height = frame->height / 2;
+
+    if (cuMemcpy2DAsync(&uv_copy, stream) != CUDA_SUCCESS) {
+        throw std::runtime_error("failed to cuMemcpy");
+    }
+
+    cuGraphicsUnmapResources(2, resources, stream);
 
     cuStreamSynchronize(stream); // TODO check error
     m_has_frame = true;
@@ -213,6 +271,8 @@ void video_tracker::Viewer::draw() {
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, m_texture);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, m_uv_texture);
 
         glBindVertexArray(m_vao);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
